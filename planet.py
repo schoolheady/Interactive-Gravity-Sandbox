@@ -2,56 +2,90 @@ import pygame
 import pygame.gfxdraw
 import math
 import random 
+import numpy as np
 
-G_CONSTANT = (6.6743 * 10 **-1)
+G_CONSTANT = (66.743)
 class Planet:
-    def __init__(self, position: pygame.Vector2) -> None:
-        self.size = random.randint(4, 10)
+    def __init__(
+        self,
+        position: pygame.Vector2,
+        mass: float | None = None,
+        radius: int | None = None,
+        velocity: pygame.Vector2 | None = None,
+        fixed: bool = False,
+    ) -> None:
+        self.size = radius if radius is not None else random.randint(4, 40)
         min_mass = self.size
         max_mass = 1000
-        self.mass = random.randint(min_mass, max(max_mass, min_mass))
+        self.mass = mass if mass is not None else random.randint(min_mass, max(max_mass, min_mass))
         self.position = pygame.Vector2(position)
         self.radius = round(self.size)
-        self.velocity = pygame.Vector2(
-            random.choice(list(range(-2, 0)) + list(range(1, 2))),
-            random.choice(list(range(-2, 0)) + list(range(1, 2))),
+        self.acceleration = 0
+        self.velocity = (
+            pygame.Vector2(velocity)
+            if velocity is not None
+            else pygame.Vector2(
+                self.random_velocity_component(),
+                self.random_velocity_component(),
+            )
         )
-        self.gravitational_force = 0
-        print("mass", self.mass)
-        
-        
-    def update_position(self) -> None:
-        self.position.x += self.velocity.x
-        self.position.y += self.velocity.y 
- 
+        self.ax = 0
+        self.ay = 0
+        self.fixed = fixed
 
-    def draw(self, screen):
+        self.color = self.get_random_color()
+
+        
+    def update_position(self, dt) -> None:
+        if self.fixed:
+            return
+        self.velocity.x += self.ax  * dt
+        self.velocity.y += self.ay  * dt
+        self.position.x += self.velocity.x * dt
+        self.position.y += self.velocity.y * dt
+ 
+    def get_random_color(self):
+        while True:
+            color = np.random.randint(0, 256, size=3)
+            if np.any(color > 10):
+                    return color
+
+    def random_velocity_component(self) -> float:
+        sign = random.choice((-1.0, 1.0))
+        magnitude = random.uniform(0, 5.0)
+        return sign * magnitude
+            
+    def draw(self, screen) -> None:
         draw_x = round(self.position.x)
         draw_y = round(self.position.y)
         if not (-32_768 <= draw_x <= 32_767 and -32_768 <= draw_y <= 32_767):
             return
-        pygame.gfxdraw.aacircle(screen, draw_x, draw_y, self.radius, (255, 0, 0))
-        pygame.gfxdraw.filled_circle(screen, draw_x, draw_y, self.radius, (255, 0, 0))
+        
+        pygame.gfxdraw.aacircle(screen, draw_x, draw_y, self.radius, self.color)
+        pygame.gfxdraw.filled_circle(screen, draw_x, draw_y, self.radius, self.color)
         #pygame.draw.circle(screen, "black", (self.x, self.y), 1 )
     
-    def calculate_pull(self, planet_mass, distance: float):
-        self.gravitational_force = G_CONSTANT * self.mass * planet_mass / distance**2
-        return self.gravitational_force
+    def reset_acceleration(self) -> None:
+        self.ax = 0
+        self.ay = 0
 
-    def gravitational_pull(self, planet_mass, planet_radius_position: pygame.Vector2):
+    def gravitational_pull(self, planet_mass, planet_radius_position: pygame.Vector2) -> None:
         dx = planet_radius_position.x - self.position.x
         dy = planet_radius_position.y - self.position.y
         distance = math.hypot(dx, dy)
+        distance = max(distance, 20)
+        nx = dx / distance
+        ny = dy / distance
 
-        if distance == 0:
-            return
+        self.acceleration = G_CONSTANT * planet_mass / distance**2
+        
+        ax = self.acceleration * nx
+        ay = self.acceleration * ny
 
-        force = self.calculate_pull(planet_mass, distance)
-        acceleration = G_CONSTANT * planet_mass / distance**2
-        self.velocity.x += acceleration * (dx / distance)
-        self.velocity.y += acceleration * (dy / distance)
-        if acceleration > 1000:
-            print("dx", dx, "distance:", distance )
+        self.ax += ax
+        self.ay += ay
+
+
 
 
 

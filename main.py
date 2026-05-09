@@ -5,15 +5,38 @@ import pygame.gfxdraw
 import planet
 
 planets: list[planet.Planet] = []
+STAR_MASS = 200_000
+STAR_RADIUS = 18
+PLANET_MASS = 25
+PLANET_RADIUS = 6
 
-def draw_planets(planets: list[planet.Planet]) -> None:
+def draw_planets(planets: list[planet.Planet], dt) -> None:
+    for body in planets:
+        body.reset_acceleration()
+
     for i in range(len(planets)):
-        
         for b in range(len(planets)):
-            if b != i: 
+            if b != i:
                 planets[i].gravitational_pull(planets[b].mass, planets[b].position)
-        planets[i].update_position()
-        planets[i].draw(screen)
+
+    for body in planets:
+        body.update_position(dt)
+        body.draw(screen)
+
+
+def create_orbiting_planet(position: pygame.Vector2) -> planet.Planet:
+    if not planets:
+        return planet.Planet(position, mass=STAR_MASS, radius=STAR_RADIUS, velocity=pygame.Vector2(), fixed=True)
+
+    center_body = planets[0]
+    offset = position - center_body.position
+    distance = offset.length()
+    distance = max(distance, center_body.radius + 20)
+    radial = offset.normalize()
+    tangent = pygame.Vector2(-radial.y, radial.x)
+    orbit_speed = math.sqrt(planet.G_CONSTANT * center_body.mass / distance)
+    velocity = tangent * orbit_speed
+    return planet.Planet(position, mass=PLANET_MASS, radius=PLANET_RADIUS, velocity=velocity)
 
     
 # pygame setup
@@ -46,9 +69,9 @@ while running:
         x, y = pygame.mouse.get_pos()
         print("mouse clicked on", x, y)
         position = pygame.Vector2(x,y)
-        planets.append(planet.Planet(position))
+        planets.append(create_orbiting_planet(position))
 
-    draw_planets(planets)
+    draw_planets(planets, dt)
 
     # flip() the display to put your work on screen
     pygame.display.flip()
