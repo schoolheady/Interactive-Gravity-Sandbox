@@ -1,8 +1,6 @@
 # Interactive Gravity Box
 
-    Your Mission
-
-    Create a 2D gravity simulation where:
+    a 2D gravity simulation where:
 
     planets attract each other
     objects move through space
